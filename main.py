@@ -1,9 +1,23 @@
+import argparse
 import asyncio
 import logging
 import sys
+import os
+import sys
+import sbsip
 
-from automation_server_client import AutomationServer, Workqueue, WorkItemError, Credential, WorkItemStatus
+from datafordeler import Datafordeler
 
+from automation_server_client import (
+    AutomationServer,
+    Workqueue,
+    WorkItemError,
+    Credential,
+    WorkItemStatus,
+)
+
+proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
+fordeler: Datafordeler
 
 async def populate_queue(workqueue: Workqueue):
     logger = logging.getLogger(__name__)
@@ -34,6 +48,25 @@ if __name__ == "__main__":
     workqueue = ats.workqueue()
 
     # Initialize external systems for automation here..
+    sbsip_credential = Credential.get_credential("SBSip - produktion")
+
+    parser = argparse.ArgumentParser(description=proces_navn)
+
+    parser.add_argument(
+        "--queue",
+        action="store_true",
+        help="Udfyld køen og afslut",
+    )
+
+    certifikat_sti = os.getenv("CERTIFICATES", "certificates")
+    fordeler = Datafordeler(
+        certifikat_sti=os.path.join(certifikat_sti, "datafordeler.crt"),
+        certifikat_nøglefil=os.path.join(certifikat_sti, "datafordeler.key"),
+    )
+    sbsip.start_sbsip(
+    brugernavn=sbsip_credential.username,
+    adgangskode=sbsip_credential.password,
+    )
 
     # Queue management
     if "--queue" in sys.argv:
