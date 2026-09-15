@@ -1,5 +1,5 @@
 [project]
-name = "process-template"
+name = "brevafsendelse-bmf-bosaetningsstrategi"
 version = "0.3.0"
 description = "Add your description here"
 readme = "README.md"
@@ -7,6 +7,12 @@ requires-python = ">=3.13"
 dependencies = [
     "automation-server-client",
     "ruff>=0.16.6",
+    "openpyxl>=3.1.5",
+    "pymssql",
+    "sbsip",
+    "datafordeler",
+    "odk-tools",
+    "sbsys-brevsender",
 ]
 
 [tool.uv.sources]
@@ -14,3 +20,5 @@ automation-server-client = { git = "https://github.com/odense-rpa/automation-ser
 sbsip = { git = "https://github.com/odense-rpa/sbsip.git" }
 datafordeler = { git = "https://github.com/odense-rpa/datafordeler.git" }
 odk-tools = { git = "https://github.com/odense-rpa/odk-tools.git" }
+sbsys-brevsender = { git = "https://github.com/odense-rpa/sbsys-brevsender.git" }
+

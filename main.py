@@ -5,8 +5,10 @@ import sys
 import os
 import sys
 import sbsip
+import sbsys_brevsender
 
 from datafordeler import Datafordeler
+from odk_tools.reporting import report
 
 from automation_server_client import (
     AutomationServer,
@@ -16,6 +18,7 @@ from automation_server_client import (
     WorkItemStatus,
 )
 
+
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
 fordeler: Datafordeler
 
@@ -23,6 +26,16 @@ async def populate_queue(workqueue: Workqueue):
     logger = logging.getLogger(__name__)
 
     logger.info("Hello from populate workqueue!")
+
+    #TODO: hent personer i databasen der skal bearbejdes
+    
+    #cpr = fordeler.hent_personoplysninger("cpr")
+
+    #TODO: check om item allerede eksisterer i køen
+
+    data = {
+        "cpr": cpr
+    }
 
 
 async def process_workqueue(workqueue: Workqueue):
@@ -33,10 +46,30 @@ async def process_workqueue(workqueue: Workqueue):
     for item in workqueue:
         with item:
             data = item.data  # Item data deserialized from json as dict
+            cpr = data["cpr"]
  
             try:
-                # Process the item here
-                pass
+                #TODO: 
+                borger_adresse, borger_post_nr = fordeler.hent_adresse_til_sbsip(cpr)
+                
+                try:
+                    # send brev - husk at tjek, om du skal lave sag eller ej
+                    sbsys_brevsender.flet_og_send_brev(
+                        fil_sti=args.word_template,
+                        brev_felter=data["borger_data"],
+                        cpr=cpr,
+                        post_nr=borger_post_nr,
+                        adresse=borger_adresse,
+                        overskrift=OVERSKRIFT,
+                        beskrivelse=BESKRIVELSE,
+                        sbsys_skabelon_id=SBSYS_SKABELON_ID if sag_på_brev else ""
+                    )
+                except:
+                    raise WorkItemError(f"Brev kunne ikke sendes")
+
+
+                report("sbsys-brevsender", "Brev sendt", {"CPR": cpr})
+
             except WorkItemError as e:
                 # A WorkItemError represents a soft error that indicates the item should be passed to manual processing or a business logic fault
                 logger.error(f"Error processing item: {data}. Error: {e}")
