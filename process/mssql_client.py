@@ -52,3 +52,15 @@ class MSSQLClient:
             WHERE PNR=%s
         """
         return self.execute_query(query, (cpr,))
+
+    def hent_borgere(self) -> list:
+        """Hent alle borgere fra databasen."""
+        query = """ SELECT TOP (1000) [Cpr]
+            ,[Alder_aar]
+            ,[Kommune_fraflyttet]
+            ,[Land_indrejst_fra]
+            ,[Dato_til_kommune]
+            ,[Flyttetype]
+            FROM [RPA_Dataudveksling_DWH].[dbo].[tilflyttere]
+            """
+        return self.execute_query(query)

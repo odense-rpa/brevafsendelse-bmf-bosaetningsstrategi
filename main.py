@@ -4,11 +4,13 @@ import logging
 import sys
 import os
 import sys
+from odk_tools.tracking import Tracker
 import sbsip
 import sbsys_brevsender
 
 from datafordeler import Datafordeler
 from odk_tools.reporting import report
+from process.mssql_client import MSSQLClient
 
 from automation_server_client import (
     AutomationServer,
@@ -18,7 +20,7 @@ from automation_server_client import (
     WorkItemStatus,
 )
 
-
+mssql_client: MSSQLClient
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
 fordeler: Datafordeler
 
@@ -28,7 +30,8 @@ async def populate_queue(workqueue: Workqueue):
     logger.info("Hello from populate workqueue!")
 
     #TODO: hent personer i databasen der skal bearbejdes
-    
+    borgere = mssql_client.hent_borgere()
+    print("hej")
     #cpr = fordeler.hent_personoplysninger("cpr")
 
     #TODO: check om item allerede eksisterer i køen
@@ -85,11 +88,27 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description=proces_navn)
 
+    tracking_credential = Credential.get_credential("Odense SQL Server")
+
+    mssql_client = MSSQLClient(
+        host=tracking_credential.data["server"],  # Assuming username contains host
+        user=tracking_credential.username,
+        password=tracking_credential.password,
+        database=tracking_credential.data["database"],
+    )
+
     parser.add_argument(
         "--queue",
         action="store_true",
         help="Udfyld køen og afslut",
     )
+
+    parser.add_argument(
+        "--word-template",
+        default=os.environ.get("WORD_TEMPLATE_PATH"),
+        help="Path to the Word template for letter generation",
+    )
+    args = parser.parse_args()
 
     certifikat_sti = os.getenv("CERTIFICATES", "certificates")
     fordeler = Datafordeler(
