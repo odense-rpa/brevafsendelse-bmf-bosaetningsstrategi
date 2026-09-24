@@ -1,24 +1,23 @@
 import argparse
 import asyncio
 import logging
-import sys
 import os
 import sys
 import sbsip
 
-from datetime import datetime, date
+from automation_server_client import (
+    AutomationServer,
+    Credential,
+    WorkItemError,
+    WorkItemStatus,
+    Workqueue,
+)
+
 from pathlib import Path
 from datafordeler import Datafordeler
 from odk_tools.reporting import report
 from process.mssql_client import MSSQLClient
 
-from automation_server_client import (
-    AutomationServer,
-    Workqueue,
-    WorkItemError,
-    Credential,
-    WorkItemStatus,
-)
 
 mssql_client: MSSQLClient
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
@@ -28,28 +27,29 @@ BESKRIVELSE = "Velkommen til Odense - Bosætningsstrategi"
 SBSYS_SKABELON_ID = ""
 sag_på_brev = False
 
+
 async def populate_queue(workqueue: Workqueue):
     logger = logging.getLogger(__name__)
 
     logger.info("Hello from populate workqueue!")
 
     borgere = mssql_client.hent_borgere()
-    
+
     for borger in borgere:
         cpr = borger["Cpr"]
         personoplysninger = fordeler.hent_personoplysninger(cpr)
-        cpr_fordeler = personoplysninger["Person"]["Personnumre"][0]["Personnummer"]["personnummer"]
+        cpr_fordeler = personoplysninger["Person"]["Personnumre"][0]["Personnummer"][
+            "personnummer"
+        ]
         try:
-            if not cpr_fordeler == cpr:
+            if cpr_fordeler != cpr:
                 logger.warning(f"cpr stemmer ikke overens: {borger}")
                 continue
         except KeyError:
             logger.warning(f"Missing Cpr for borger: {borger}")
             continue
 
-        data = {
-            "cpr": cpr
-        }
+        data = {"cpr": cpr}
 
         # tjek om item allerede er i kø inden det bliver sendt ned til process
         if not workqueue.get_item_by_reference(cpr, status=WorkItemStatus.IN_PROGRESS):
@@ -65,13 +65,12 @@ async def process_workqueue(workqueue: Workqueue):
         with item:
             data = item.data  # Item data deserialized from json as dict
             cpr = data["cpr"]
- 
+
             try:
-                #TODO: 
+                # TODO:
                 borger_adresse, borger_post_nr = fordeler.hent_adresse_til_sbsip(cpr)
-                
+
                 try:
-                    
                     # Send the existing PDF directly; no Word merge/render step is needed.
                     sbsip.send_digital_post(
                         vedhæftet_fil=Path(args.file_template),
@@ -80,19 +79,18 @@ async def process_workqueue(workqueue: Workqueue):
                         adresse=borger_adresse,
                         overskrift="Annes testbrev",
                         beskrivelse="bmf bosætningsstragtegi testbrev",
-                        sbsys_skabelon_id=""
+                        sbsys_skabelon_id="",
                     )
                 except Exception as error:
                     logger.exception("Brevafsendelse fejlede")
                     raise WorkItemError(f"Brev kunne ikke sendes: {error}") from error
-
 
                 report("sbsys-brevsender", "Brev sendt", {"CPR": cpr})
 
             except WorkItemError as e:
                 # A WorkItemError represents a soft error that indicates the item should be passed to manual processing or a business logic fault
                 report("sbsys-brevsender", "Brev blev ikke sendt", {"CPR": cpr})
-                
+
                 logger.error(f"Error processing item: {data}. Error: {e}")
                 item.fail(str(e))
 
@@ -132,11 +130,11 @@ if __name__ == "__main__":
         certifikat_sti=os.path.join(certifikat_sti, "datafordeler.crt"),
         certifikat_nøglefil=os.path.join(certifikat_sti, "datafordeler.key"),
     )
-    
+
     args = parser.parse_args()
     sbsip.start_sbsip(
-    brugernavn=sbsip_credential.username,
-    adgangskode=sbsip_credential.password,
+        brugernavn=sbsip_credential.username,
+        adgangskode=sbsip_credential.password,
     )
 
     # Queue management
