@@ -55,12 +55,17 @@ class MSSQLClient:
 
     def hent_borgere(self) -> list:
         """Hent alle borgere fra databasen."""
-        query = """ SELECT TOP (1000) [Cpr]
+        query = """ SELECT
+            [Cpr]
             ,[Alder_aar]
             ,[Kommune_fraflyttet]
             ,[Land_indrejst_fra]
             ,[Dato_til_kommune]
+            ,[Dato_adresse_start]
             ,[Flyttetype]
+            ,[Intern_flytning]
             FROM [RPA_Dataudveksling_DWH].[dbo].[tilflyttere]
+            WHERE [Dato_til_kommune] >= DATEADD(MONTH, -1, GETDATE())
+            AND [Intern_flytning] = 0
             """
         return self.execute_query(query)

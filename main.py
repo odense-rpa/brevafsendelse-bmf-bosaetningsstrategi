@@ -4,10 +4,10 @@ import logging
 import sys
 import os
 import sys
-from odk_tools.tracking import Tracker
 import sbsip
-import sbsys_brevsender
 
+from datetime import datetime, date
+from pathlib import Path
 from datafordeler import Datafordeler
 from odk_tools.reporting import report
 from process.mssql_client import MSSQLClient
@@ -23,22 +23,37 @@ from automation_server_client import (
 mssql_client: MSSQLClient
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
 fordeler: Datafordeler
+OVERSKRIFT = "Velkommen til Odense"
+BESKRIVELSE = "Velkommen til Odense - Bosætningsstrategi"
+SBSYS_SKABELON_ID = ""
+sag_på_brev = False
 
 async def populate_queue(workqueue: Workqueue):
     logger = logging.getLogger(__name__)
 
     logger.info("Hello from populate workqueue!")
 
-    #TODO: hent personer i databasen der skal bearbejdes
     borgere = mssql_client.hent_borgere()
-    print("hej")
-    #cpr = fordeler.hent_personoplysninger("cpr")
+    
+    for borger in borgere:
+        cpr = borger["Cpr"]
+        personoplysninger = fordeler.hent_personoplysninger(cpr)
+        cpr_fordeler = personoplysninger["Person"]["Personnumre"][0]["Personnummer"]["personnummer"]
+        try:
+            if not cpr_fordeler == cpr:
+                logger.warning(f"cpr stemmer ikke overens: {borger}")
+                continue
+        except KeyError:
+            logger.warning(f"Missing Cpr for borger: {borger}")
+            continue
 
-    #TODO: check om item allerede eksisterer i køen
+        data = {
+            "cpr": cpr
+        }
 
-    data = {
-        "cpr": cpr
-    }
+        # tjek om item allerede er i kø inden det bliver sendt ned til process
+        if not workqueue.get_item_by_reference(cpr, status=WorkItemStatus.IN_PROGRESS):
+            workqueue.add_item(data=data, reference=str(cpr))
 
 
 async def process_workqueue(workqueue: Workqueue):
@@ -56,25 +71,28 @@ async def process_workqueue(workqueue: Workqueue):
                 borger_adresse, borger_post_nr = fordeler.hent_adresse_til_sbsip(cpr)
                 
                 try:
-                    # send brev - husk at tjek, om du skal lave sag eller ej
-                    sbsys_brevsender.flet_og_send_brev(
-                        fil_sti=args.word_template,
-                        brev_felter=data["borger_data"],
+                    
+                    # Send the existing PDF directly; no Word merge/render step is needed.
+                    sbsip.send_digital_post(
+                        vedhæftet_fil=Path(args.file_template),
                         cpr=cpr,
                         post_nr=borger_post_nr,
                         adresse=borger_adresse,
-                        overskrift=OVERSKRIFT,
-                        beskrivelse=BESKRIVELSE,
-                        sbsys_skabelon_id=SBSYS_SKABELON_ID if sag_på_brev else ""
+                        overskrift="Annes testbrev",
+                        beskrivelse="bmf bosætningsstragtegi testbrev",
+                        sbsys_skabelon_id=""
                     )
-                except:
-                    raise WorkItemError(f"Brev kunne ikke sendes")
+                except Exception as error:
+                    logger.exception("Brevafsendelse fejlede")
+                    raise WorkItemError(f"Brev kunne ikke sendes: {error}") from error
 
 
                 report("sbsys-brevsender", "Brev sendt", {"CPR": cpr})
 
             except WorkItemError as e:
                 # A WorkItemError represents a soft error that indicates the item should be passed to manual processing or a business logic fault
+                report("sbsys-brevsender", "Brev blev ikke sendt", {"CPR": cpr})
+                
                 logger.error(f"Error processing item: {data}. Error: {e}")
                 item.fail(str(e))
 
@@ -104,17 +122,18 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--word-template",
-        default=os.environ.get("WORD_TEMPLATE_PATH"),
-        help="Path to the Word template for letter generation",
+        "--file-template",
+        default=os.environ.get("FILE_TEMPLATE_PATH"),
+        help="Path to the file template for letter generation",
     )
-    args = parser.parse_args()
 
     certifikat_sti = os.getenv("CERTIFICATES", "certificates")
     fordeler = Datafordeler(
         certifikat_sti=os.path.join(certifikat_sti, "datafordeler.crt"),
         certifikat_nøglefil=os.path.join(certifikat_sti, "datafordeler.key"),
     )
+    
+    args = parser.parse_args()
     sbsip.start_sbsip(
     brugernavn=sbsip_credential.username,
     adgangskode=sbsip_credential.password,
