@@ -22,10 +22,6 @@ from process.mssql_client import MSSQLClient
 mssql_client: MSSQLClient
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
 fordeler: Datafordeler
-OVERSKRIFT = "Velkommen til Odense"
-BESKRIVELSE = "Velkommen til Odense - Bosætningsstrategi"
-SBSYS_SKABELON_ID = ""
-sag_på_brev = False
 
 
 async def populate_queue(workqueue: Workqueue):
@@ -36,11 +32,12 @@ async def populate_queue(workqueue: Workqueue):
     borgere = mssql_client.hent_borgere()
 
     for borger in borgere:
-        cpr = borger["Cpr"]
+        cpr = str(borger["Cpr"]).replace("-", "")
         personoplysninger = fordeler.hent_personoplysninger(cpr)
         cpr_fordeler = personoplysninger["Person"]["Personnumre"][0]["Personnummer"][
             "personnummer"
         ]
+        cpr_fordeler = str(cpr_fordeler).replace("-", "")
         try:
             if cpr_fordeler != cpr:
                 logger.warning(f"cpr stemmer ikke overens: {borger}")
