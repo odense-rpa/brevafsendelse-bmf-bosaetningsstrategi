@@ -13,15 +13,19 @@ from automation_server_client import (
     Workqueue,
 )
 
+from sbsys.manager import SbsysClientManager
+from sbsys.functionality.journalnotater import JournalnotatClient
+from sbsys.functionality.sager import SagerClient
 from pathlib import Path
 from datafordeler import Datafordeler
 from odk_tools.reporting import report
 from process.mssql_client import MSSQLClient
 
 
-mssql_client: MSSQLClient
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
+mssql_client: MSSQLClient
 fordeler: Datafordeler
+sbsys: SbsysClientManager
 
 
 async def populate_queue(workqueue: Workqueue):
@@ -30,6 +34,12 @@ async def populate_queue(workqueue: Workqueue):
     logger.info("Hello from populate workqueue!")
 
     borgere = mssql_client.hent_borgere()
+
+
+    # def hent_sager():
+    #     sager = SagerClient.hent_sag("")
+    #     return sager
+
 
     for borger in borgere:
         cpr = str(borger["Cpr"]).replace("-", "")
@@ -45,6 +55,23 @@ async def populate_queue(workqueue: Workqueue):
         except KeyError:
             logger.warning(f"Missing Cpr for borger: {borger}")
             continue
+
+        #slå borger op i sbsys og se om sagen / filen er blevet tilføjet inden for et år. 
+        # Hvis filen er under 1 år gammel, så skal vi ikke arbejde på den borger
+        cpr_med_bindestreg = cpr[:6] + "-" + cpr[6:]
+        #få inspo fra 'tilbud om danskundervisning'
+        # mangler bare stadig vigtige informationer, for at kunne lave søgningen
+
+        sager = sbsys.sager.søg_sager(
+            {
+
+                "PrimaerPerson":{
+                    "CprNummer":cpr
+                },
+
+            }
+        )
+        
 
         data = {"cpr": cpr}
 
@@ -102,6 +129,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=proces_navn)
 
     tracking_credential = Credential.get_credential("Odense SQL Server")
+    sbsys_credential = Credential.get_credential("SBSYS - produktion")
 
     mssql_client = MSSQLClient(
         host=tracking_credential.data["server"],  # Assuming username contains host
@@ -126,6 +154,15 @@ if __name__ == "__main__":
     fordeler = Datafordeler(
         certifikat_sti=os.path.join(certifikat_sti, "datafordeler.crt"),
         certifikat_nøglefil=os.path.join(certifikat_sti, "datafordeler.key"),
+    )
+
+    sbsys = SbsysClientManager(
+    sbsys_credential.data["base_url"],
+    sbsys_credential.data["token_url"],
+    sbsys_credential.data["client_id"],
+    sbsys_credential.data["client_secret"],
+    sbsys_credential.username,
+    sbsys_credential.password
     )
 
     args = parser.parse_args()
