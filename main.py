@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import sbsip
+from datetime import UTC, datetime, timedelta
 
 from automation_server_client import (
     AutomationServer,
@@ -20,8 +21,14 @@ from process.mssql_client import MSSQLClient
 
 
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
+DAGE_MELLEM_BREVE = 35
 mssql_client: MSSQLClient
 fordeler: DatafordelerGraphQL
+
+
+def _som_utc(tidspunkt: datetime) -> datetime:
+    """Gør tidspunkter uden tidszone sammenlignelige (ATS-tidspunkter antages at være UTC)."""
+    return tidspunkt if tidspunkt.tzinfo else tidspunkt.replace(tzinfo=UTC)
 
 
 async def populate_queue(workqueue: Workqueue):
@@ -43,9 +50,14 @@ async def populate_queue(workqueue: Workqueue):
 
         data = {"cpr": cpr}
 
-        # tjek om item allerede er i kø inden det bliver sendt ned til process
-        if not workqueue.get_item_by_reference(cpr, status=WorkItemStatus.IN_PROGRESS):
-            workqueue.add_item(data=data, reference=str(cpr))
+        # spring borgere over, som allerede har et item i ATS inden for de seneste 35 dage
+        graense = datetime.now(UTC) - timedelta(days=DAGE_MELLEM_BREVE)
+        tidligere_items = workqueue.get_item_by_reference(cpr)
+        if any(_som_utc(item.created_at) >= graense for item in tidligere_items):
+            logger.info("Borger har allerede været kørt inden for %s dage", DAGE_MELLEM_BREVE)
+            continue
+
+        workqueue.add_item(data=data, reference=cpr)
 
 
 async def process_workqueue(workqueue: Workqueue):
