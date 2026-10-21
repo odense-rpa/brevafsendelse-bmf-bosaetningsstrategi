@@ -40,19 +40,6 @@ class MSSQLClient:
         results = self._cursor.fetchall() or []
         return results
 
-    def hent_oplysninger(self, cpr: str) -> list:
-        """Hent oplysninger for en specifik borger fra databasen."""
-        query = """
-            SELECT CVRnr, 
-            Dato_Ajourfoering, 
-            Dato_DeltagelseGyldigFra, 
-            PNR, 
-            Navn_FAD 
-            FROM cvr_aktuelle_fad 
-            WHERE PNR=%s
-        """
-        return self.execute_query(query, (cpr,))
-
     def hent_borgere(self) -> list:
         """Hent alle borgere fra databasen."""
         query = """ SELECT
