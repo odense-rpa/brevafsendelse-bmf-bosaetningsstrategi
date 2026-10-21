@@ -3,9 +3,9 @@ import asyncio
 import logging
 import os
 import sys
-import sbsip
-from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
+import sbsip
 from automation_server_client import (
     AutomationServer,
     Credential,
@@ -13,22 +13,24 @@ from automation_server_client import (
     WorkItemStatus,
     Workqueue,
 )
-
-from pathlib import Path
 from datafordeler import DatafordelerGraphQL
 from odk_tools.reporting import report
+
+from process.config import (
+    BREV_BESKRIVELSE,
+    BREV_OVERSKRIFT,
+    CREDENTIAL_DATAFORDELER,
+    CREDENTIAL_SBSIP,
+    CREDENTIAL_SQL,
+    DAGE_MELLEM_BREVE,
+    PROCES_NAVN,
+    RAPPORT_NAVN,
+)
+from process.filtre import bor_i_odense, er_kørt_for_nylig
 from process.mssql_client import MSSQLClient
 
-
-proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
-DAGE_MELLEM_BREVE = 35
 mssql_client: MSSQLClient
 fordeler: DatafordelerGraphQL
-
-
-def _som_utc(tidspunkt: datetime) -> datetime:
-    """Gør tidspunkter uden tidszone sammenlignelige (ATS-tidspunkter antages at være UTC)."""
-    return tidspunkt if tidspunkt.tzinfo else tidspunkt.replace(tzinfo=UTC)
 
 
 async def populate_queue(workqueue: Workqueue):
@@ -38,26 +40,27 @@ async def populate_queue(workqueue: Workqueue):
 
     borgere = mssql_client.hent_borgere()
 
-
     for borger in borgere:
         cpr = str(borger["Cpr"]).replace("-", "")
         # TODO: Med REST-klienten blev det første personnummer fra Datafordeleren
         # sammenlignet med cpr, og borgeren blev sprunget over ved forskel. Datafordeler
         # 1.0.0 returnerer ikke personnumre, så tjekket er nu kun, at personen findes
-        # (hent_person giver ValueError ellers). Afklar om borgere med ændret CPR skal
+        # (hent_person giver ValueError ellers). Bopælstjekket nedenfor springer borgere over,
+        # som ikke bor i Odense Kommune. Afklar om borgere med ændret CPR skal
         # springes over, og om ValueError skal fanges i stedet for at stoppe hele køen.
-        fordeler.hent_person(cpr)
+        person = fordeler.hent_person(cpr)
 
-        data = {"cpr": cpr}
-
-        # spring borgere over, som allerede har et item i ATS inden for de seneste 35 dage
-        graense = datetime.now(UTC) - timedelta(days=DAGE_MELLEM_BREVE)
-        tidligere_items = workqueue.get_item_by_reference(cpr)
-        if any(_som_utc(item.created_at) >= graense for item in tidligere_items):
-            logger.info("Borger har allerede været kørt inden for %s dage", DAGE_MELLEM_BREVE)
+        if not bor_i_odense(person):
+            logger.info("Borger bor ikke længere i Odense Kommune, springes over")
             continue
 
-        workqueue.add_item(data=data, reference=cpr)
+        if er_kørt_for_nylig(workqueue.get_item_by_reference(cpr), DAGE_MELLEM_BREVE):
+            logger.info(
+                "Borger har allerede været kørt inden for %s dage", DAGE_MELLEM_BREVE
+            )
+            continue
+
+        workqueue.add_item(data={"cpr": cpr}, reference=cpr)
 
 
 async def process_workqueue(workqueue: Workqueue):
@@ -72,7 +75,9 @@ async def process_workqueue(workqueue: Workqueue):
 
             try:
                 # TODO:
-                borger_adresse, borger_post_nr = fordeler.hent_person(cpr).sbsip_adresse()
+                borger_adresse, borger_post_nr = fordeler.hent_person(
+                    cpr
+                ).sbsip_adresse()
 
                 try:
                     # Send the existing PDF directly; no Word merge/render step is needed.
@@ -81,18 +86,18 @@ async def process_workqueue(workqueue: Workqueue):
                         cpr=cpr,
                         post_nr=borger_post_nr,
                         adresse=borger_adresse,
-                        overskrift="Annes testbrev",
-                        beskrivelse="bmf bosætningsstragtegi testbrev",
+                        overskrift=BREV_OVERSKRIFT,
+                        beskrivelse=BREV_BESKRIVELSE,
                     )
                 except Exception as error:
                     logger.exception("Brevafsendelse fejlede")
                     raise WorkItemError(f"Brev kunne ikke sendes: {error}") from error
 
-                report("sbsys-brevsender", "Brev sendt", {"CPR": cpr})
+                report(RAPPORT_NAVN, "Brev sendt", {"CPR": cpr})
 
             except WorkItemError as e:
                 # A WorkItemError represents a soft error that indicates the item should be passed to manual processing or a business logic fault
-                report("sbsys-brevsender", "Brev blev ikke sendt", {"CPR": cpr})
+                report(RAPPORT_NAVN, "Brev blev ikke sendt", {"CPR": cpr})
 
                 logger.error(f"Error processing item: {data}. Error: {e}")
                 item.fail(str(e))
@@ -103,12 +108,12 @@ if __name__ == "__main__":
     workqueue = ats.workqueue()
 
     # Initialize external systems for automation here..
-    sbsip_credential = Credential.get_credential("SBSip - produktion")
+    sbsip_credential = Credential.get_credential(CREDENTIAL_SBSIP)
 
-    parser = argparse.ArgumentParser(description=proces_navn)
+    parser = argparse.ArgumentParser(description=PROCES_NAVN)
 
-    tracking_credential = Credential.get_credential("Odense SQL Server")
-    datafordeler_credential = Credential.get_credential("Datafordeler")
+    tracking_credential = Credential.get_credential(CREDENTIAL_SQL)
+    datafordeler_credential = Credential.get_credential(CREDENTIAL_DATAFORDELER)
 
     mssql_client = MSSQLClient(
         host=tracking_credential.data["server"],  # Assuming username contains host
@@ -144,7 +149,7 @@ if __name__ == "__main__":
     if "--queue" in sys.argv:
         workqueue.clear_workqueue(WorkItemStatus.NEW)
         asyncio.run(populate_queue(workqueue))
-        exit(0)
+        sys.exit(0)
 
     # Process workqueue
     asyncio.run(process_workqueue(workqueue))
