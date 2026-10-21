@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 
-from automation_server_client import WorkItem
+from automation_server_client import WorkItem, WorkItemStatus
 from datafordeler.modeller import Person
 
 
@@ -16,8 +16,9 @@ def bor_i_odense(person: Person) -> bool:
 
 
 def er_kørt_for_nylig(items: list[WorkItem], dage: int) -> bool:
-    """Et af itemsene (uanset status) er oprettet inden for de seneste `dage` dage.
+    """Et af de færdige items er oprettet inden for de seneste `dage` dage.
 
+    Fejlede items tæller ikke med, så borgeren kan få et nyt forsøg.
     ATS-tidspunkter uden tidszone antages at være UTC.
     """
     graense = datetime.now(UTC) - timedelta(days=dage)
@@ -29,4 +30,5 @@ def er_kørt_for_nylig(items: list[WorkItem], dage: int) -> bool:
         )
         >= graense
         for item in items
+        if item.status == WorkItemStatus.COMPLETED
     )

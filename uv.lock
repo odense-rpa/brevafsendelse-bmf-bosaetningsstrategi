@@ -36,7 +36,7 @@ dependencies = [
 
 [[package]]
 name = "brevafsendelse-bmf-bosaetningsstrategi"
-version = "0.4.0"
+version = "0.4.1"
 source = { virtual = "." }
 dependencies = [
     { name = "automation-server-client" },

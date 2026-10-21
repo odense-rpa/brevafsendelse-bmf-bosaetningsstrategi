@@ -12,19 +12,19 @@ uv run python main.py --file-template <sti til brev.pdf>   # behandl køen
 | Argument | Beskrivelse |
 |---|---|
 | `--queue` | Ryd items med status NEW, udfyld køen og afslut |
-| `--file-template` | Sti til den færdige PDF, der sendes til alle. Standard er miljøvariablen `FILE_TEMPLATE_PATH`. Kræves ved behandling af køen, men ikke ved `--queue` |
+| `--file-template` | Sti til den færdige PDF, der sendes til alle. Standard er miljøvariablen `FILE_TEMPLATE_PATH`. Kræves ved behandling af køen (processen stopper med en fejl, hvis filen ikke findes), men ikke ved `--queue` |
 
 ## Behandling
 **Udfyld køen (`--queue`):**
 
 1. Borgere hentes fra `[RPA_Dataudveksling_DWH].[dbo].[tilflyttere]`: tilflyttet inden for de seneste 35 dage og ikke intern flytning.
 2. Borgeren springes over, hvis personen er død eller ikke har en aktuel adresse i Odense Kommune (Datafordeleren).
-3. Borgeren springes over, hvis der allerede findes et item (uanset status) oprettet inden for de seneste 35 dage (`DAGE_MELLEM_BREVE`). Vinduet skal være lige så langt som SQL-vinduet i `process/mssql_client.py`.
+3. Borgeren springes over, hvis der allerede findes et færdigt item oprettet inden for de seneste 35 dage (`DAGE_MELLEM_BREVE`). Vinduet skal være lige så langt som SQL-vinduet i `process/mssql_client.py`.
 4. Ellers lægges borgerens CPR i køen.
 
 **Behandl køen:** For hvert item hentes adresse fra Datafordeleren, og PDF'en sendes med `sbsip.send_digital_post`. Kun adressen og PDF'en bruges, der flettes ikke noget ind i brevet.
 
-Hvis et brev ikke kan sendes, markeres itemet som fejlet og rapporteres i arket `Fejl`, og processen fortsætter med næste borger. Fejlede items lægges ikke i køen igen af sig selv, og de tæller med i 35-dages kontrollen.
+Hvis et brev ikke kan sendes, markeres itemet som fejlet og rapporteres i arket `Fejl`, og processen fortsætter med næste borger. Fejlede items lægges ikke i køen igen af sig selv, men tæller ikke med i 35-dages kontrollen, så borgeren kommer med igen, næste gang køen udfyldes (så længe borgeren stadig er inden for SQL-vinduet).
 
 ## Rapportering
 Rapporten `brevafsendelse-bmf-bosaetningsstrategi` (via `odk_tools.reporting`) har to ark:

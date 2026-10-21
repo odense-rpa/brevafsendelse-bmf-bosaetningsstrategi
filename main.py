@@ -141,6 +141,12 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    if "--queue" not in sys.argv and not (
+        args.file_template and Path(args.file_template).is_file()
+    ):
+        raise FileNotFoundError(
+            f"Brevets PDF ikke fundet: {args.file_template!r} (angiv --file-template eller FILE_TEMPLATE_PATH)"
+        )
     sbsip.start_sbsip(
         brugernavn=sbsip_credential.username,
         adgangskode=sbsip_credential.password,
