@@ -2,6 +2,7 @@
 .env
 
 /certificates
+certifikater/
 /input
 
 # Python-cachefiler
