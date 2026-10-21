@@ -4,6 +4,8 @@ PROCES_NAVN = "Brevafsendelse BMF Bosætningsstrategi"
 
 # Navnet rapporteringen grupperes under i odk_tools.reporting
 RAPPORT_NAVN = "brevafsendelse-bmf-bosaetningsstrategi"
+RAPPORT_ARK_FEJL = "Fejl"
+RAPPORT_ARK_ANTAL = "Antal sendte breve"
 
 # Credentials i ATS
 CREDENTIAL_SBSIP = "SBSip - produktion"

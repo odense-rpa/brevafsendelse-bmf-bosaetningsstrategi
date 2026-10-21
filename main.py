@@ -9,7 +9,6 @@ import sbsip
 from automation_server_client import (
     AutomationServer,
     Credential,
-    WorkItemError,
     WorkItemStatus,
     Workqueue,
 )
@@ -24,6 +23,8 @@ from process.config import (
     CREDENTIAL_SQL,
     DAGE_MELLEM_BREVE,
     PROCES_NAVN,
+    RAPPORT_ARK_ANTAL,
+    RAPPORT_ARK_FEJL,
     RAPPORT_NAVN,
 )
 from process.filtre import bor_i_odense, er_kørt_for_nylig
@@ -68,39 +69,39 @@ async def process_workqueue(workqueue: Workqueue):
 
     logger.info("Hello from process workqueue!")
 
+    antal_sendt = 0
+
     for item in workqueue:
         with item:
             data = item.data  # Item data deserialized from json as dict
             cpr = data["cpr"]
 
             try:
-                # TODO:
                 borger_adresse, borger_post_nr = fordeler.hent_person(
                     cpr
                 ).sbsip_adresse()
 
-                try:
-                    # Send the existing PDF directly; no Word merge/render step is needed.
-                    sbsip.send_digital_post(
-                        vedhæftet_fil=Path(args.file_template),
-                        cpr=cpr,
-                        post_nr=borger_post_nr,
-                        adresse=borger_adresse,
-                        overskrift=BREV_OVERSKRIFT,
-                        beskrivelse=BREV_BESKRIVELSE,
-                    )
-                except Exception as error:
-                    logger.exception("Brevafsendelse fejlede")
-                    raise WorkItemError(f"Brev kunne ikke sendes: {error}") from error
+                # Send the existing PDF directly; no Word merge/render step is needed.
+                sbsip.send_digital_post(
+                    vedhæftet_fil=Path(args.file_template),
+                    cpr=cpr,
+                    post_nr=borger_post_nr,
+                    adresse=borger_adresse,
+                    overskrift=BREV_OVERSKRIFT,
+                    beskrivelse=BREV_BESKRIVELSE,
+                )
+                antal_sendt += 1
 
-                report(RAPPORT_NAVN, "Brev sendt", {"CPR": cpr})
+            except Exception as error:
+                # Uanset årsag: marker itemet som fejlet, rapportér og fortsæt med næste borger
+                logger.exception("Brev kunne ikke sendes")
+                report(
+                    RAPPORT_NAVN, RAPPORT_ARK_FEJL, {"CPR": cpr, "Årsag": str(error)}
+                )
+                item.fail(str(error))
 
-            except WorkItemError as e:
-                # A WorkItemError represents a soft error that indicates the item should be passed to manual processing or a business logic fault
-                report(RAPPORT_NAVN, "Brev blev ikke sendt", {"CPR": cpr})
-
-                logger.error(f"Error processing item: {data}. Error: {e}")
-                item.fail(str(e))
+    # Kun antallet rapporteres: ingen oplysninger om hvem, hvad eller hvornår
+    report(RAPPORT_NAVN, RAPPORT_ARK_ANTAL, {"Antal breve sendt": antal_sendt})
 
 
 if __name__ == "__main__":
