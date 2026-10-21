@@ -13,9 +13,6 @@ from automation_server_client import (
     Workqueue,
 )
 
-from sbsys.manager import SbsysClientManager
-from sbsys.functionality.journalnotater import JournalnotatClient
-from sbsys.functionality.sager import SagerClient
 from pathlib import Path
 from datafordeler import DatafordelerGraphQL
 from odk_tools.reporting import report
@@ -25,7 +22,6 @@ from process.mssql_client import MSSQLClient
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
 mssql_client: MSSQLClient
 fordeler: DatafordelerGraphQL
-sbsys: SbsysClientManager
 
 
 async def populate_queue(workqueue: Workqueue):
@@ -36,11 +32,6 @@ async def populate_queue(workqueue: Workqueue):
     borgere = mssql_client.hent_borgere()
 
 
-    # def hent_sager():
-    #     sager = SagerClient.hent_sag("")
-    #     return sager
-
-
     for borger in borgere:
         cpr = str(borger["Cpr"]).replace("-", "")
         # TODO: Med REST-klienten blev det første personnummer fra Datafordeleren
@@ -49,23 +40,6 @@ async def populate_queue(workqueue: Workqueue):
         # (hent_person giver ValueError ellers). Afklar om borgere med ændret CPR skal
         # springes over, og om ValueError skal fanges i stedet for at stoppe hele køen.
         fordeler.hent_person(cpr)
-
-        #slå borger op i sbsys og se om sagen / filen er blevet tilføjet inden for et år. 
-        # Hvis filen er under 1 år gammel, så skal vi ikke arbejde på den borger
-        cpr_med_bindestreg = cpr[:6] + "-" + cpr[6:]
-        #få inspo fra 'tilbud om danskundervisning'
-        # mangler bare stadig vigtige informationer, for at kunne lave søgningen
-
-        sager = sbsys.sager.søg_sager(
-            {
-
-                "PrimaerPerson":{
-                    "CprNummer":cpr
-                },
-
-            }
-        )
-        
 
         data = {"cpr": cpr}
 
@@ -97,7 +71,6 @@ async def process_workqueue(workqueue: Workqueue):
                         adresse=borger_adresse,
                         overskrift="Annes testbrev",
                         beskrivelse="bmf bosætningsstragtegi testbrev",
-                        sbsys_skabelon_id="",
                     )
                 except Exception as error:
                     logger.exception("Brevafsendelse fejlede")
@@ -123,7 +96,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=proces_navn)
 
     tracking_credential = Credential.get_credential("Odense SQL Server")
-    sbsys_credential = Credential.get_credential("SBSYS - produktion")
     datafordeler_credential = Credential.get_credential("Datafordeler")
 
     mssql_client = MSSQLClient(
@@ -148,15 +120,6 @@ if __name__ == "__main__":
     fordeler = DatafordelerGraphQL(
         client_id=datafordeler_credential.username,
         client_secret=datafordeler_credential.password,
-    )
-
-    sbsys = SbsysClientManager(
-    sbsys_credential.data["base_url"],
-    sbsys_credential.data["token_url"],
-    sbsys_credential.data["client_id"],
-    sbsys_credential.data["client_secret"],
-    sbsys_credential.username,
-    sbsys_credential.password
     )
 
     args = parser.parse_args()

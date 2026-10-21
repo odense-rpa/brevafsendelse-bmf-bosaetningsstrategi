@@ -46,7 +46,6 @@ dependencies = [
     { name = "pymssql" },
     { name = "ruff" },
     { name = "sbsip" },
-    { name = "sbsys" },
 ]
 
 [package.metadata]
@@ -58,7 +57,6 @@ requires-dist = [
     { name = "pymssql" },
     { name = "ruff", specifier = ">=0.16.6" },
     { name = "sbsip", git = "https://github.com/odense-rpa/sbsip.git" },
-    { name = "sbsys", git = "https://github.com/odense-rpa/sbsys-ng.git" },
 ]
 
 [[package]]
@@ -450,14 +448,6 @@ wheels = [
 name = "sbsip"
 version = "0.2.1"
 source = { git = "https://github.com/odense-rpa/sbsip.git#ff3baaf75f8e9c91f57fe8cb0b559930a304db12" }
-dependencies = [
-    { name = "httpx" },
-]
-
-[[package]]
-name = "sbsys"
-version = "0.1.2"
-source = { git = "https://github.com/odense-rpa/sbsys-ng.git#0e01f2db8c2c2caa3f32f62f4bfa36bbe25dd214" }
 dependencies = [
     { name = "httpx" },
 ]
