@@ -17,14 +17,14 @@ from sbsys.manager import SbsysClientManager
 from sbsys.functionality.journalnotater import JournalnotatClient
 from sbsys.functionality.sager import SagerClient
 from pathlib import Path
-from datafordeler import Datafordeler
+from datafordeler import DatafordelerGraphQL
 from odk_tools.reporting import report
 from process.mssql_client import MSSQLClient
 
 
 proces_navn = "Brevafsendelse BMF Bosætningsstrategi"
 mssql_client: MSSQLClient
-fordeler: Datafordeler
+fordeler: DatafordelerGraphQL
 sbsys: SbsysClientManager
 
 
@@ -43,18 +43,12 @@ async def populate_queue(workqueue: Workqueue):
 
     for borger in borgere:
         cpr = str(borger["Cpr"]).replace("-", "")
-        personoplysninger = fordeler.hent_personoplysninger(cpr)
-        cpr_fordeler = personoplysninger["Person"]["Personnumre"][0]["Personnummer"][
-            "personnummer"
-        ]
-        cpr_fordeler = str(cpr_fordeler).replace("-", "")
-        try:
-            if cpr_fordeler != cpr:
-                logger.warning(f"cpr stemmer ikke overens: {borger}")
-                continue
-        except KeyError:
-            logger.warning(f"Missing Cpr for borger: {borger}")
-            continue
+        # TODO: Med REST-klienten blev det første personnummer fra Datafordeleren
+        # sammenlignet med cpr, og borgeren blev sprunget over ved forskel. Datafordeler
+        # 1.0.0 returnerer ikke personnumre, så tjekket er nu kun, at personen findes
+        # (hent_person giver ValueError ellers). Afklar om borgere med ændret CPR skal
+        # springes over, og om ValueError skal fanges i stedet for at stoppe hele køen.
+        fordeler.hent_person(cpr)
 
         #slå borger op i sbsys og se om sagen / filen er blevet tilføjet inden for et år. 
         # Hvis filen er under 1 år gammel, så skal vi ikke arbejde på den borger
@@ -92,7 +86,7 @@ async def process_workqueue(workqueue: Workqueue):
 
             try:
                 # TODO:
-                borger_adresse, borger_post_nr = fordeler.hent_adresse_til_sbsip(cpr)
+                borger_adresse, borger_post_nr = fordeler.hent_person(cpr).sbsip_adresse()
 
                 try:
                     # Send the existing PDF directly; no Word merge/render step is needed.
@@ -130,6 +124,7 @@ if __name__ == "__main__":
 
     tracking_credential = Credential.get_credential("Odense SQL Server")
     sbsys_credential = Credential.get_credential("SBSYS - produktion")
+    datafordeler_credential = Credential.get_credential("Datafordeler")
 
     mssql_client = MSSQLClient(
         host=tracking_credential.data["server"],  # Assuming username contains host
@@ -150,10 +145,9 @@ if __name__ == "__main__":
         help="Path to the file template for letter generation",
     )
 
-    certifikat_sti = os.getenv("CERTIFICATES", "certificates")
-    fordeler = Datafordeler(
-        certifikat_sti=os.path.join(certifikat_sti, "datafordeler.crt"),
-        certifikat_nøglefil=os.path.join(certifikat_sti, "datafordeler.key"),
+    fordeler = DatafordelerGraphQL(
+        client_id=datafordeler_credential.username,
+        client_secret=datafordeler_credential.password,
     )
 
     sbsys = SbsysClientManager(
