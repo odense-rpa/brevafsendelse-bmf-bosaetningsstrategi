@@ -34,6 +34,8 @@ Rapporten `brevafsendelse-bmf-bosaetningsstrategi` (via `odk_tools.reporting`) h
 | `Fejl` | Én linje pr. fejlet brev: CPR og årsag |
 | `Antal sendte breve` | Antal breve sendt i kørslen |
 
+**Tracking:** Hvert sendt brev registreres med `odk_tools.tracking.Tracker.track_task` under procesnavnet (`PROCES_NAVN` i `process/config.py`) via credentialen `Odense SQL Server`. En fejl i tracking logges, men får ikke et sendt brev til at tælle som fejlet.
+
 ## Credentials
 - `SBSip - produktion`
 - `Odense SQL Server` (felterne `server` og `database`)

@@ -14,6 +14,7 @@ from automation_server_client import (
 )
 from datafordeler import DatafordelerGraphQL
 from odk_tools.reporting import report
+from odk_tools.tracking import Tracker
 
 from process.config import (
     BREV_BESKRIVELSE,
@@ -32,6 +33,7 @@ from process.mssql_client import MSSQLClient
 
 mssql_client: MSSQLClient
 fordeler: DatafordelerGraphQL
+tracker: Tracker
 
 
 async def populate_queue(workqueue: Workqueue):
@@ -91,6 +93,7 @@ async def process_workqueue(workqueue: Workqueue):
                     beskrivelse=BREV_BESKRIVELSE,
                 )
                 antal_sendt += 1
+                tracker.track_task(PROCES_NAVN)
 
             except Exception as error:
                 # Uanset årsag: marker itemet som fejlet, rapportér og fortsæt med næste borger
@@ -115,6 +118,10 @@ if __name__ == "__main__":
 
     tracking_credential = Credential.get_credential(CREDENTIAL_SQL)
     datafordeler_credential = Credential.get_credential(CREDENTIAL_DATAFORDELER)
+
+    tracker = Tracker(
+        username=tracking_credential.username, password=tracking_credential.password
+    )
 
     mssql_client = MSSQLClient(
         host=tracking_credential.data["server"],  # Assuming username contains host
