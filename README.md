@@ -47,8 +47,10 @@ Faste indstillinger ligger i `process/config.py`. Miljøvariabler (se `.env.exam
 | `ATS_URL`, `ATS_TOKEN`, `ATS_WORKQUEUE_OVERRIDE` | Forbindelse til Automation Server ved lokal kørsel |
 | `FILE_TEMPLATE_PATH` | Standardsti til brevets PDF |
 
+Brevets PDF ligger ikke i repoet. I drift angives stien med `--file-template` som parameter på ATS-triggeren (filen ligger på et shared drive). Lokalt kan den lægges i `input/`, som er gitignored.
+
 ## Åbne punkter
-- `BREV_OVERSKRIFT` og `BREV_BESKRIVELSE` i `process/config.py` er testtekster og skal erstattes, når BMF har oprettet brevet.
+- Målgruppen (kun unge) forudsættes afgrænset af DWH-tabellen `tilflyttere`. Koden filtrerer ikke på alder, så det bør bekræftes.
 - Datafordeler 1.0.0 returnerer ikke personnumre, så tjekket af ændret CPR er væk. Se TODO i `main.py` om borgere med ændret CPR, og om en `ValueError` fra Datafordeleren skal fanges i stedet for at stoppe hele køen.
 
 ## Persondata

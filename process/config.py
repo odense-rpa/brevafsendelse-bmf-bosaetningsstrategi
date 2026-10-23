@@ -16,6 +16,5 @@ CREDENTIAL_DATAFORDELER = "Datafordeler"
 # MSSQLClient.hent_borgere, som skal være lige så langt)
 DAGE_MELLEM_BREVE = 35
 
-# TODO: Erstattes af de rigtige tekster, når BMF har oprettet brevet
-BREV_OVERSKRIFT = "Annes testbrev"
-BREV_BESKRIVELSE = "bmf bosætningsstragtegi testbrev"
+BREV_OVERSKRIFT = "Velkommen til Odense"
+BREV_BESKRIVELSE = "Velkomstbrev til nye unge odenseanere"

@@ -132,7 +132,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--file-template",
         default=os.environ.get("FILE_TEMPLATE_PATH"),
-        help="Path to the file template for letter generation",
+        help="Sti til brevets PDF (fx på shared drive). Standard er FILE_TEMPLATE_PATH",
     )
 
     fordeler = DatafordelerGraphQL(
