@@ -17,4 +17,14 @@ CREDENTIAL_DATAFORDELER = "Datafordeler"
 DAGE_MELLEM_BREVE = 35
 
 BREV_OVERSKRIFT = "Velkommen til Odense"
-BREV_BESKRIVELSE = "Velkomstbrev til nye unge odenseanere"
+# Selve beskeden i digital post. sbsip sætter teksten direkte ind i en HTML-body,
+# så afsnit skal være <p>-tags (almindelige linjeskift forsvinder).
+BREV_BESKRIVELSE = (
+    "<p>Kære nye odenseaner. Velkommen til byen. Vi er virkelig glade for, at du har "
+    "valgt at være en del af Odense. Hvad enten du er flyttet hertil for at studere, "
+    "arbejde, være tættere på dem, du holder af, vende tilbage, eller starte et helt "
+    "nyt kapitel i dit liv, håber vi, at du hurtigt kommer til at føle dig hjemme.</p>"
+    "<p>At flytte til en ny by kan være både spændende og overvældende. Derfor vil vi "
+    "gerne give dig en varm velkomst og dele nogle af de ting, som mange unge "
+    "odenseanere holder særligt meget af ved livet i Odense.</p>"
+)
