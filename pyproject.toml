@@ -1,17 +1,20 @@
 [project]
 name = "brevafsendelse-bmf-bosaetningsstrategi"
-version = "0.4.1"
-description = "Add your description here"
+version = "0.5.0"
+description = "Sender velkomstbrev som digital post til nye unge tilflyttere i Odense Kommune (BMF's bosætningsstrategi)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "automation-server-client",
-    "ruff>=0.16.6",
-    "openpyxl>=3.1.5",
     "pymssql",
     "sbsip",
     "datafordeler",
     "odk-tools",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.6",
 ]
 
 [tool.uv.sources]
