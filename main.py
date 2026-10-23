@@ -47,11 +47,15 @@ async def populate_queue(workqueue: Workqueue):
         cpr = str(borger["Cpr"]).replace("-", "")
         # TODO: Med REST-klienten blev det første personnummer fra Datafordeleren
         # sammenlignet med cpr, og borgeren blev sprunget over ved forskel. Datafordeler
-        # 1.0.0 returnerer ikke personnumre, så tjekket er nu kun, at personen findes
-        # (hent_person giver ValueError ellers). Bopælstjekket nedenfor springer borgere over,
-        # som ikke bor i Odense Kommune. Afklar om borgere med ændret CPR skal
-        # springes over, og om ValueError skal fanges i stedet for at stoppe hele køen.
-        person = fordeler.hent_person(cpr)
+        # 1.0.0 returnerer ikke personnumre, så tjekket er nu kun, at personen findes.
+        # Afklar om borgere med ændret CPR skal springes over.
+        try:
+            person = fordeler.hent_person(cpr)
+        except ValueError as error:
+            # Ugyldigt eller ukendt CPR-nummer: rapportér og fortsæt med næste borger
+            logger.warning("Borger kunne ikke slås op i Datafordeler: %s", error)
+            report(RAPPORT_NAVN, RAPPORT_ARK_FEJL, {"CPR": cpr, "Årsag": str(error)})
+            continue
 
         if not bor_i_odense(person):
             logger.info("Borger bor ikke længere i Odense Kommune, springes over")

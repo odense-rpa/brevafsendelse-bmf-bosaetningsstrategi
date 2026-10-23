@@ -31,7 +31,7 @@ Rapporten `brevafsendelse-bmf-bosaetningsstrategi` (via `odk_tools.reporting`) h
 
 | Ark | Indhold |
 |---|---|
-| `Fejl` | Én linje pr. fejlet brev: CPR og årsag |
+| `Fejl` | Én linje pr. fejlet brev eller borger, der ikke kan slås op i Datafordeler ved køudfyldning: CPR og årsag |
 | `Antal sendte breve` | Antal breve sendt i kørslen |
 
 **Tracking:** Hvert sendt brev registreres med `odk_tools.tracking.Tracker.track_task` under procesnavnet (`PROCES_NAVN` i `process/config.py`) via credentialen `Odense SQL Server`. En fejl i tracking logges, men får ikke et sendt brev til at tælle som fejlet.
@@ -53,7 +53,7 @@ Brevets PDF ligger ikke i repoet. I drift angives stien med `--file-template` so
 
 ## Åbne punkter
 - Målgruppen (kun unge) forudsættes afgrænset af DWH-tabellen `tilflyttere`. Koden filtrerer ikke på alder, så det bør bekræftes.
-- Datafordeler 1.0.0 returnerer ikke personnumre, så tjekket af ændret CPR er væk. Se TODO i `main.py` om borgere med ændret CPR, og om en `ValueError` fra Datafordeleren skal fanges i stedet for at stoppe hele køen.
+- Datafordeler 1.0.0 returnerer ikke personnumre, så tjekket af ændret CPR er væk. Se TODO i `main.py` om borgere med ændret CPR. En `ValueError` fra Datafordeleren ved køudfyldning (ugyldigt eller ukendt CPR) rapporteres i arket `Fejl`, og borgeren springes over.
 
 ## Persondata
 Køen indeholder kun CPR. Fejlrapporten indeholder CPR og fejlårsagen. Rapporten over sendte breve indeholder kun et antal.
