@@ -45,10 +45,7 @@ async def populate_queue(workqueue: Workqueue):
 
     for borger in borgere:
         cpr = str(borger["Cpr"]).replace("-", "")
-        # TODO: Med REST-klienten blev det første personnummer fra Datafordeleren
-        # sammenlignet med cpr, og borgeren blev sprunget over ved forskel. Datafordeler
-        # 1.0.0 returnerer ikke personnumre, så tjekket er nu kun, at personen findes.
-        # Afklar om borgere med ændret CPR skal springes over.
+
         try:
             person = fordeler.hent_person(cpr)
         except ValueError as error:
