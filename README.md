@@ -17,12 +17,12 @@ uv run python main.py --file-template <sti til brev.pdf>   # behandl køen
 ## Behandling
 **Udfyld køen (`--queue`):**
 
-1. Borgere hentes fra `[RPA_Dataudveksling_DWH].[dbo].[tilflyttere]`: tilflyttet inden for de seneste 35 dage og ikke intern flytning.
+1. Borgere hentes fra `[RPA_Dataudveksling_DWH].[dbo].[tilflyttere]`: tilflyttet inden for de seneste 35 dage og ikke intern flytning. Ved første kørsel kan vinduet udvides med `DAGE_TILBAGE` (fx 100). Den skal fjernes igen til de løbende kørsler.
 2. Borgeren springes over, hvis personen er død eller ikke har en aktuel adresse i Odense Kommune (Datafordeleren).
-3. Borgeren springes over, hvis der allerede findes et færdigt item oprettet inden for de seneste 35 dage (`DAGE_MELLEM_BREVE`). Vinduet skal være lige så langt som SQL-vinduet i `process/mssql_client.py`.
+3. Borgeren springes over, hvis der allerede findes et færdigt item oprettet inden for de seneste 35 dage (`DAGE_MELLEM_BREVE`). Vinduet skal være lige så langt som SQL-vinduets standard (`hent_borgere` i `process/mssql_client.py`).
 4. Ellers lægges borgerens CPR i køen.
 
-**Behandl køen:** For hvert item hentes adresse fra Datafordeleren, og PDF'en sendes med `sbsip.send_digital_post`. Kun adressen og PDF'en bruges, der flettes ikke noget ind i brevet.
+**Behandl køen:** For hvert item hentes adresse fra Datafordeleren, og PDF'en sendes med `sbsip.send_digital_post` som brevets hoveddokument (`som_hoveddokument=True`), uden separat beskrivelsestekst. Kun adressen og PDF'en bruges, der flettes ikke noget ind i brevet.
 
 Hvis et brev ikke kan sendes, markeres itemet som fejlet og rapporteres i arket `Fejl`, og processen fortsætter med næste borger. Fejlede items lægges ikke i køen igen af sig selv, men tæller ikke med i 35-dages kontrollen, så borgeren kommer med igen, næste gang køen udfyldes (så længe borgeren stadig er inden for SQL-vinduet).
 
@@ -48,6 +48,7 @@ Faste indstillinger ligger i `process/config.py`. Miljøvariabler (se `.env.exam
 |---|---|
 | `ATS_URL`, `ATS_TOKEN`, `ATS_WORKQUEUE_OVERRIDE` | Forbindelse til Automation Server ved lokal kørsel |
 | `FILE_TEMPLATE_PATH` | Standardsti til brevets PDF |
+| `DAGE_TILBAGE` | Valgfri. Antal dage tilbage, borgere hentes fra ved køudfyldning. Standard er `DAGE_MELLEM_BREVE` (35). Sættes kun ved første kørsel (100) |
 
 Brevets PDF ligger ikke i repoet. I drift angives stien med `--file-template` som parameter på ATS-triggeren (filen ligger på et shared drive). Lokalt kan den lægges i `input/`, som er gitignored.
 

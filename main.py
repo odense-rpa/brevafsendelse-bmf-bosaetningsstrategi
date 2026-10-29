@@ -17,7 +17,6 @@ from odk_tools.reporting import report
 from odk_tools.tracking import Tracker
 
 from process.config import (
-    BREV_BESKRIVELSE,
     BREV_OVERSKRIFT,
     CREDENTIAL_DATAFORDELER,
     CREDENTIAL_SBSIP,
@@ -41,7 +40,10 @@ async def populate_queue(workqueue: Workqueue):
 
     logger.info("Hello from populate workqueue!")
 
-    borgere = mssql_client.hent_borgere()
+    # Første kørsel sættes DAGE_TILBAGE=100; ellers bruges DAGE_MELLEM_BREVE
+    dage_tilbage = int(os.environ.get("DAGE_TILBAGE", DAGE_MELLEM_BREVE))
+    logger.info("Henter borgere fra de seneste %s dage", dage_tilbage)
+    borgere = mssql_client.hent_borgere(dage_tilbage)
 
     for borger in borgere:
         cpr = str(borger["Cpr"]).replace("-", "")
@@ -90,8 +92,8 @@ async def process_workqueue(workqueue: Workqueue):
                     cpr=cpr,
                     post_nr=borger_post_nr,
                     adresse=borger_adresse,
+                    som_hoveddokument=True,
                     overskrift=BREV_OVERSKRIFT,
-                    beskrivelse=BREV_BESKRIVELSE,
                 )
                 antal_sendt += 1
                 tracker.track_task(PROCES_NAVN)

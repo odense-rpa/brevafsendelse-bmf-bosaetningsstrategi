@@ -1,6 +1,6 @@
 [project]
 name = "brevafsendelse-bmf-bosaetningsstrategi"
-version = "0.5.0"
+version = "0.6.0"
 description = "Sender velkomstbrev som digital post til nye unge tilflyttere i Odense Kommune (BMF's bosætningsstrategi)"
 readme = "README.md"
 requires-python = ">=3.13"

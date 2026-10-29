@@ -1,5 +1,7 @@
 import pymssql
 
+from process.config import DAGE_MELLEM_BREVE
+
 
 class MSSQLClient:
     """MSSQL database client with context manager support."""
@@ -40,8 +42,8 @@ class MSSQLClient:
         results = self._cursor.fetchall() or []
         return results
 
-    def hent_borgere(self) -> list:
-        """Hent alle borgere fra databasen."""
+    def hent_borgere(self, dage_tilbage: int = DAGE_MELLEM_BREVE) -> list:
+        """Hent borgere, der er flyttet til kommunen inden for de seneste dage."""
         query = """ SELECT
             [Cpr]
             ,[Alder_aar]
@@ -52,7 +54,7 @@ class MSSQLClient:
             ,[Flyttetype]
             ,[Intern_flytning]
             FROM [RPA_Dataudveksling_DWH].[dbo].[tilflyttere]
-            WHERE [Dato_til_kommune] >= DATEADD(DAY, -35, GETDATE())
+            WHERE [Dato_til_kommune] >= DATEADD(DAY, -%s, GETDATE())
             AND [Intern_flytning] = 0
             """
-        return self.execute_query(query)
+        return self.execute_query(query, (dage_tilbage,))
