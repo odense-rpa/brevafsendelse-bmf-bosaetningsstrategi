@@ -13,7 +13,7 @@ CREDENTIAL_SQL = "Odense SQL Server"
 CREDENTIAL_DATAFORDELER = "Datafordeler"
 
 # En borger må højst have et brev inden for så mange dage (matcher vinduet i
-# MSSQLClient.hent_borgere; kun første kørsel overstyres med DAGE_TILBAGE)
+# MSSQLClient.hent_borgere, som skal være lige så langt)
 DAGE_MELLEM_BREVE = 35
 
 # Selve beskeden i digital post, bygget til at ligne brevets PDF. sbsip sætter

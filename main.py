@@ -40,10 +40,7 @@ async def populate_queue(workqueue: Workqueue):
 
     logger.info("Hello from populate workqueue!")
 
-    # Første kørsel sættes DAGE_TILBAGE=100; ellers bruges DAGE_MELLEM_BREVE
-    dage_tilbage = int(os.environ.get("DAGE_TILBAGE", DAGE_MELLEM_BREVE))
-    logger.info("Henter borgere fra de seneste %s dage", dage_tilbage)
-    borgere = mssql_client.hent_borgere(dage_tilbage)
+    borgere = mssql_client.hent_borgere()
 
     for borger in borgere:
         cpr = str(borger["Cpr"]).replace("-", "")
