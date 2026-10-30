@@ -52,7 +52,7 @@ class MSSQLClient:
             ,[Flyttetype]
             ,[Intern_flytning]
             FROM [RPA_Dataudveksling_DWH].[dbo].[tilflyttere]
-            WHERE [Dato_til_kommune] >= DATEADD(DAY, -35, GETDATE())
+            WHERE [Dato_til_kommune] >= DATEADD(DAY, -100, GETDATE())
             AND [Intern_flytning] = 0
             """
         return self.execute_query(query)

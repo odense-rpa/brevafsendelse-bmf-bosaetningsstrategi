@@ -78,6 +78,8 @@ async def process_workqueue(workqueue: Workqueue):
             data = item.data  # Item data deserialized from json as dict
             cpr = data["cpr"]
 
+            # cpr = os.getenv("TESTCPR")
+
             try:
                 borger_adresse, borger_post_nr = fordeler.hent_person(
                     cpr
